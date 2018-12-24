@@ -1,0 +1,33 @@
+{
+  "name": "webgl-tutorial",
+  "version": "0.1.0",
+  "description": "Object that synchronize its properties between tabs.",
+  "main": "./dist/main.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "webpack -p",
+    "dev": "webpack -d --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ama-shock/webgl-tutorial.git"
+  },
+  "author": "Ama-shock",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Ama-shock/webgl-tutorial/issues"
+  },
+  "homepage": "https://github.com/Ama-shock/webgl-tutorial#readme",
+  "devDependencies": {
+    "script-loader": "^0.7.2",
+    "ts-loader": "^5.3.1",
+    "tslint": "^5.11.0",
+    "typescript": "^3.2.1",
+    "webpack": "^4.26.1",
+    "webpack-cli": "^3.1.2"
+  },
+  "dependencies": {
+    "@types/three": "^0.93.13",
+    "three": "^0.99.0"
+  }
+}

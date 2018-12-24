@@ -1,0 +1,14 @@
+# builds
+dist/
+web/main.js
+
+# draft
+web/models
+
+# development file
+.vscode
+package-lock.json
+*.map
+
+# Dependency directories
+node_modules/
