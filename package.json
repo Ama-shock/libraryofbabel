@@ -1,5 +1,5 @@
 {
-  "name": "webgl-tutorial",
+  "name": "libraryofbabel",
   "version": "0.1.0",
   "description": "Object that synchronize its properties between tabs.",
   "main": "./dist/main.js",
@@ -10,14 +10,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ama-shock/webgl-tutorial.git"
+    "url": "git+https://github.com/Ama-shock/libraryofbabel.git"
   },
   "author": "Ama-shock",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/Ama-shock/webgl-tutorial/issues"
+    "url": "https://github.com/Ama-shock/libraryofbabel/issues"
   },
-  "homepage": "https://github.com/Ama-shock/webgl-tutorial#readme",
+  "homepage": "https://github.com/Ama-shock/libraryofbabel#readme",
   "devDependencies": {
     "script-loader": "^0.7.2",
     "ts-loader": "^5.3.1",
