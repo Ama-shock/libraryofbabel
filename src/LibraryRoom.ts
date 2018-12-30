@@ -1,4 +1,4 @@
-import {Object3D, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight} from 'three';
+import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight} from 'three';
 import {wood, cloth, paper} from './textures';
 
 const r3 = Math.tan(Math.PI / 3.0);
@@ -11,12 +11,21 @@ export class Floor extends Object3D{
         carpet.vertices[3].x = 1.7;
         carpet.rotateX(Math.PI / -2.0);
         carpet.translate(0, 0, -2.35 * r3);
-        this.add(new Mesh(carpet, cloth));
 
         const floor = new BoxGeometry(6, 0.5, 1.5 * r3);
         floor.translate(0, -0.251, -2.25 * r3);
         [0, 2, 5, 7].forEach(i =>floor.vertices[i].x /= 2);
-        this.add(new Mesh(floor, wood));
+
+        const carpets = new Geometry();
+        const floors = new Geometry();
+        [0, 1, 2, 3, 4, 5].forEach(i =>{
+            const trans = new Matrix4().makeRotationY(Math.PI * i / 3.0);
+            carpets.merge(carpet, trans);
+            floors.merge(floor, trans);
+        });
+
+        this.add(new Mesh(carpets, cloth));
+        this.add(new Mesh(floors, wood));
     }
 }
 
@@ -24,16 +33,23 @@ export class Handrail extends Object3D{
     constructor(){
         super();
 
+        const rail = new Geometry();
         const bar = new CylinderGeometry(0.1, 0.1, 3.0);
         bar.rotateZ(Math.PI / 2.0);
         bar.translate(0, 1, -1.6 * r3);
-        this.add(new Mesh(bar, wood));
+        rail.merge(bar);
         
-        const pillar = new Mesh(new CylinderGeometry(0.1, 0.1, 1.0).translate(0, 0.5, -1.6 * r3), wood);
-        this.add(pillar);
-        [-3, -2, -1, 1, 2, 3].forEach(i =>{
-            this.add(pillar.clone().translateX(i * 0.5));
+        const pillar = new CylinderGeometry(0.1, 0.1, 1.0).translate(0, 0.5, -1.6 * r3);
+        [-3, -2, -1, 0, 1, 2, 3].forEach(i =>{
+            rail.merge(pillar, new Matrix4().makeTranslation(i * 0.5, 0, 0));
         });
+        
+        const geo = new Geometry();
+        [0, 1, 2, 3, 4, 5].forEach(i =>{
+            const trans = new Matrix4().makeRotationY(Math.PI * i / 3.0);
+            geo.merge(rail, trans);
+        });
+        this.add(new Mesh(geo, wood));
     }
 }
 
@@ -43,12 +59,6 @@ export class Library extends Object3D{
         const floor = new Floor();
         const rail = new Handrail();
         this.add(floor, rail);
-        [1, 2, 3, 4, 5].forEach(i =>{
-            this.add(
-                floor.clone().rotateY(Math.PI * i / 3.0),
-                rail.clone().rotateY(Math.PI * i / 3.0)
-            );
-        });
 
         const shelf = new BookShelf();
         [1, 2, 4, 5].forEach(i =>{
@@ -61,75 +71,58 @@ export class Library extends Object3D{
 export class BookShelf extends Object3D{
     constructor(){
         super();
-        
+        const z = -3 * r3;
+        const geo = new Geometry();
         const base = new BoxGeometry(6, 0.6, 1);
-        base.translate(0, 0.3, -3 * r3 - 0.5);
-        this.add(new Mesh(base, wood));
-        const top = base.clone().translate(0, 8.5, 0);
-        this.add(new Mesh(top, wood));
+        geo.merge(base, new Matrix4().makeTranslation(0, 0.3, z - 0.5));
+        geo.merge(base, new Matrix4().makeTranslation(0, 8.8, z - 0.5));
 
         const inner = new BoxGeometry(6, 8, 0.1);
-        inner.translate(0, 4.5, -3 * r3 - 1);
-        this.add(new Mesh(inner, wood));
+        geo.merge(inner, new Matrix4().makeTranslation(0, 4.5, z - 1));
 
         const wall = new BoxGeometry(1/3, 8, 1);
-        wall.translate(-3 + 1/6, 4.5, -3 * r3 - 0.5);
-        this.add(new Mesh(wall, wood));
-        const wall2 = wall.clone().translate(6 -1/3, 0, 0);
-        this.add(new Mesh(wall2, wood));
+        geo.merge(wall, new Matrix4().makeTranslation(-3 + 1/6, 4.5, z - 0.5));
+        geo.merge(wall, new Matrix4().makeTranslation(3 - 1/6, 4.5, z - 0.5));
 
         const particle = new BoxGeometry(6, 0.2, 0.9);
-        particle.translate(0, 1.5, -3 * r3 - 0.6);
-        this.add(new Mesh(particle, wood));
-        [1, 2, 3, 4, 5, 6].forEach(i =>{
-            const p = particle.clone().translate(0, i, 0);
-            this.add(new Mesh(p, wood));
-        });
+        for(let i = 0; i < 7; i++){
+            geo.merge(particle, new Matrix4().makeTranslation(0, i + 1.5, z - 0.6));
+        }
         
+        this.add(new Mesh(geo, wood));
         this.fill();
     }
 
     fill(){
+        let [cover, page] = this.createBookGeo();
+        const covers = new Geometry();
+        const pages = new Geometry();
         for(let x = 0; x < 32; x++){
             for(let y = 0; y < 8; y++){
-                const book = this.getBook();
-                book.translateX(-3 + 5/12 + x/6);
-                book.translateY(0.95 + y);
-                this.add(book);
+                const trans = new Matrix4().makeTranslation(-3 + 5/12 + x/6, 0.95 + y, 0);
+                covers.merge(cover, trans);
+                pages.merge(page, trans);
             }
         }
+        this.add(new Mesh(covers, new MeshLambertMaterial({color: 0x4c6cb3})));
+        this.add(new Mesh(pages, new MeshLambertMaterial({color: 0xffffff})));
     }
 
-    private book?: Object3D;
-    getBook(){
-        if(!this.book){
-            this.book = new Object3D();
-            
-            const pages = new BoxGeometry(0.14, 0.68, 0.48);
-            this.book.add(new Mesh(pages, new MeshLambertMaterial({color: 0xffffff})));
-            
-            const coverColor = new MeshLambertMaterial({color: 0x4c6cb3});
-            const back = new Mesh(
-                new BoxGeometry(0.06, 0.7, 0.01).translate(0, 0, 0.26),
-                coverColor);
-    
-            const cover = new Mesh(
-                new BoxGeometry(0.01, 0.7, 0.5).translate(-0.075, 0, 0),
-                coverColor);
+    private createBookGeo(){
+        const z = -3 * r3 - 0.5;
+        const page = new BoxGeometry(0.14, 0.68, 0.48).translate(0, 0, z);
+        
+        const cover = new Geometry();
+        const back = new BoxGeometry(0.06, 0.7, 0.01).translate(0, 0, 0.26);
+        cover.merge(back);
+        cover.merge(back, new Matrix4().makeRotationY(-0.2));
+        cover.merge(back, new Matrix4().makeRotationY(0.2));
 
-            this.book.add(
-                back.clone().rotateY(-0.2),
-                back.clone().rotateY(0.2),
-                back,
-                cover.clone(),
-                cover.translateX(0.15)
-            );
-
-            this.book.translateZ(-3 * r3 - 0.5);
-        }
-
-        const book = this.book.clone();
-        return book;
+        const front = new BoxGeometry(0.01, 0.7, 0.5);
+        cover.merge(front, new Matrix4().makeTranslation(-0.075, 0, 0));
+        cover.merge(front, new Matrix4().makeTranslation(0.075, 0, 0));
+        cover.translate(0, 0, z);
+        return [cover, page];
     }
 }
 
@@ -180,28 +173,29 @@ export class Hall extends Object3D{
 export class Stair extends Object3D{
     constructor(){
         super();
-        this.add(new Mesh(new CylinderGeometry(0.2, 0.2, 9.5).translate(0, 4.25, 0), wood));
-        const pillar = new Mesh(new CylinderGeometry(0.12, 0.12, 9).translate(0, 4.5, -1.6 * r3), wood);
-        const pillars = new Object3D();
+        const geo = new Geometry();
+        geo.merge(new CylinderGeometry(0.2, 0.2, 9.5).translate(0, 4.25, 0));
+        const pillar = new CylinderGeometry(0.12, 0.12, 9).translate(0, 4.5, -1.6 * r3);
+        const pillars = new Geometry();
         [1, 2, 3, 4].forEach(i =>{
-            pillars.add(pillar.clone().translateX(i * 3 / 4 -1.5));
+            pillars.merge(pillar, new Matrix4().makeTranslation(i * 3 / 4 -1.5, 0, 0));
         });
 
         const floor = new BoxGeometry(0.8, 0.5, 1.6 * r3).translate(-1.2, -0.25, -0.8 * r3);
-        const steps = [0, 1, 2, 3].map(i=>{
+        const steps = new Geometry();
+        [0, 1, 2, 3].forEach(i=>{
             const f = floor.clone().translate(i * 0.8, 0, 0);
             [0, 2, 5, 7].forEach(i =>f.vertices[i].x = 0);
-            const m = new Mesh(f, wood);
-            this.add(m);
-            return m;
+            geo.merge(f);
+            steps.merge(f, new Matrix4().makeTranslation(0, i * 0.5 - 2, 0));
         });
         
         [1, 2, 3, 4, 5].forEach(r =>{
-            steps.forEach((step, s)=>{
-                this.add(step.clone().rotateY(-Math.PI * r / 3).translateY(s*0.5 + r*2 - 2));
-            });
-            this.add(pillars.clone().rotateY(Math.PI * r / 3));
+            geo.merge(steps.translate(0, 2, 0), new Matrix4().makeRotationY(-Math.PI * r / 3));
+            geo.merge(pillars, new Matrix4().makeRotationY(Math.PI * r / 3));
         });
+
+        this.add(new Mesh(geo, wood));
     }
 }
 
