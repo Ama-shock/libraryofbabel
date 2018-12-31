@@ -23,7 +23,7 @@ window.addEventListener('load', async()=>{
     renderer.setSize(960, 540);
 
     const scene = new MainScene(renderer);
-    scene.add(new GridHelper(100, 100));
+    //scene.add(new GridHelper(100, 100));
 
     while(true) {
         scene.render();

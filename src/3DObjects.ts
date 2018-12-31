@@ -1,4 +1,4 @@
-import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight, MeshBasicMaterial, Group} from 'three';
+import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight, MeshBasicMaterial, Group, MeshPhongMaterial} from 'three';
 import {wood, cloth, paper} from './textures';
 
 const r3 = Math.tan(Math.PI / 3.0);
@@ -104,6 +104,39 @@ export class BooksGeometry extends Geometry{
     }
 }
 
+export class WallGeometry extends Geometry{
+    constructor(){
+        super();
+        this.merge(new PlaneGeometry(6, 3, 12, 6), new Matrix4().makeTranslation(0, 7.5, -3 * r3));
+        this.merge(new PlaneGeometry(1.5, 6, 3, 12), new Matrix4().makeTranslation(2.25, 3, -3 * r3));
+        this.merge(new PlaneGeometry(1.5, 6, 3, 12), new Matrix4().makeTranslation(-2.25, 3, -3 * r3));
+    }
+}
+
+export class DoorGeometry extends Geometry{
+    constructor(){
+        super();
+        this.merge(new BoxGeometry(2.54, 5.74, 0.2), new Matrix4().makeTranslation(0, 2.93, -3 * r3));
+        this.merge(new BoxGeometry(3.4, 0.4, 0.4), new Matrix4().makeTranslation(0, 6, -3 * r3));
+
+        const pillar = new BoxGeometry(0.4, 5.8, 0.4);
+        this.merge(pillar, new Matrix4().makeTranslation(-1.5, 2.9, -3 * r3));
+        this.merge(pillar, new Matrix4().makeTranslation(1.5, 2.9, -3 * r3));
+    }
+
+    knob(){
+        const geo = new Geometry();
+
+        geo.merge(new CylinderGeometry(0.02, 0.02, 0.5).translate(-1.3, 1.5, -3 * r3 + 0.1));
+        geo.merge(new CylinderGeometry(0.02, 0.02, 0.5).translate(-1.3, 5.5, -3 * r3 + 0.1));
+        geo.merge(new CylinderGeometry(0.05, 0.05, 0.5).rotateZ(Math.PI / 2).translate(1, 3, -3 * r3 + 0.3));
+        geo.merge(new CylinderGeometry(0.03, 0.03, 0.3).rotateX(Math.PI / 2).translate(1.1, 3, -3 * r3 + 0.15));
+        geo.merge(new BoxGeometry(0.3, 0.6, 0.05), new Matrix4().makeTranslation(1.1, 2.8, -3 * r3 + 0.125));
+
+        return geo;
+    }
+}
+
 export class StairGeometry extends Geometry{
     constructor(){
         super();
@@ -191,10 +224,18 @@ export class Hall extends Room{
     setup(){
         this.woodGeo.merge(new StairGeometry());
         
-        const wall = new PlaneGeometry(6, 9, 12, 18).translate(0, 4.5, -3 * r3);
+        const wall = new WallGeometry();
         this.paperGeo.merge(wall);
         this.paperGeo.merge(wall, new Matrix4().makeRotationY(Math.PI));
         
+        const door = new DoorGeometry();
+        this.woodGeo.merge(door);
+        this.woodGeo.merge(door, new Matrix4().makeRotationY(Math.PI));
+
+        const knob = door.knob();
+        knob.merge(knob, new Matrix4().makeRotationY(Math.PI));
+        this.add(new Mesh(knob, new MeshPhongMaterial({color: 0xaaaaaa})));
+
         [1, 2, 4, 5].forEach(i => this.setPathGeometry(i));
     }
 
@@ -231,41 +272,50 @@ export class Library extends Room{
 
 export class Unit extends Group{
     base: Library|Hall;
-    constructor(private Type: typeof Library|typeof Hall){
+    constructor(Type: typeof Library|typeof Hall){
         super();
         this.base = new Type();
         this.add(this.base);
         this.add(this.base.clone().translateY(-Room.size.y));
         this.add(this.base.clone().translateY(Room.size.y));
-    }
-}
-
-export class UnitBase extends Unit{
-    constructor(Type: typeof Library|typeof Hall){
-        super(Type);
         this.base.illuminateLamps();
     }
-
-    lat: number = 0;
-    lon: number = 0;
-    update(theta: number, phi: number){
-        const lon = Math.cos(phi);
-        this.lon = lon;
-    }
-}
-export class HallBase extends Group{
-
-    update(theta: number, phi: number){
-
-    }
 }
 
-export class LibraryBase extends Group{
+export class HallBase extends Unit{
     constructor(){
-        super();
-        this.add(new Library());
-        const lib = new Library();
-        this.add(lib.clone().translateZ(-Room.size.z).translateX(Room.size.x).rotateY(Math.PI / -3.0));
-        this.add(lib.translateZ(Room.size.z).translateX(Room.size.x).rotateY(Math.PI / 3.0));
+        super(Hall);
+
+        [0, 1, 2, 3].forEach(i=>{
+            const x = i & 1 ? 1 : -1;
+            const z = i & 2 ? 1 : -1;
+            this.add(new Unit(Library).translateX(Room.size.x * x).translateZ(Room.size.z * z).rotateY(Math.PI / 3 * x * z));
+            this.add(new Hall().translateX(Room.size.x * 2 * x).translateZ(Room.size.z * 2 * z));
+        });
+    }
+}
+
+export class LibraryBaseS extends Unit{
+    constructor(){
+        super(Library);
+
+        [-1, 1].forEach(i=>{
+            this.add(new Unit(Hall).translateZ(Room.size.z * 2 * i).rotateY(Math.PI / 3));
+            this.add(new Library().translateZ(Room.size.z * 4 * i));
+            this.add(new Library().translateX(-Room.size.x).translateZ(Room.size.z * 3 * i).rotateY(Math.PI / -3));
+        });
+        this.rotateY(Math.PI / -3);
+    }
+}
+export class LibraryBaseR extends Unit{
+    constructor(){
+        super(Library);
+
+        [-1, 1].forEach(i=>{
+            this.add(new Unit(Hall).translateZ(Room.size.z * 2 * i).rotateY(Math.PI / -3));
+            this.add(new Library().translateZ(Room.size.z * 4 * i));
+            this.add(new Library().translateX(Room.size.x).translateZ(Room.size.z * 3 * i).rotateY(Math.PI / 3));
+        });
+        this.rotateY(Math.PI / 3);
     }
 }

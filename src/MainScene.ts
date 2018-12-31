@@ -1,5 +1,5 @@
-import {WebGLRenderer, Scene, Fog, PerspectiveCamera, HemisphereLight, PointLight, FirstPersonControls, Camera, Clock} from 'three';
-import {Hall, Library, UnitBase, Room} from './3DObjects';
+import {WebGLRenderer, Scene, Fog, PerspectiveCamera, HemisphereLight, PointLight, FirstPersonControls, Camera, Clock, Vector3} from 'three';
+import {Hall, Library, Unit, Room} from './3DObjects';
 
 function echo(...str: any[]){
     const article = document.querySelector('article');
@@ -17,6 +17,15 @@ export default class MainScene extends Scene{
     readonly camera: Camera;
     readonly light: PointLight;
     readonly controls: FirstPersonControls;
+
+    current: Unit;
+    unitHall = new Unit(Hall);
+    unitLibraryS = new Unit(Library).rotateY(Math.PI / 3);
+    unitLibraryR = new Unit(Library).rotateY(Math.PI / -3);
+    hall = new Hall();
+    libraryS = new Library().rotateY(Math.PI / 3);
+    libraryR = new Library().rotateY(Math.PI / -3);
+
     constructor(readonly renderer: WebGLRenderer){
         super();
         const r3 = Math.tan(Math.PI / 3.0);
@@ -37,40 +46,114 @@ export default class MainScene extends Scene{
         this.controls.lookSpeed = 0.1;
         this.controls.movementSpeed = 5;
         
-
-        this.add(this.hall);
-        this.current = this.hall;
+        this.current = this.unitHall;
+        this.add(
+            this.unitHall,
+            this.unitLibraryS,
+            this.unitLibraryR,
+            this.hall,
+            this.libraryS,
+            this.libraryR
+        );
     }
 
     render(){
         clear();
         this.controls.update(this.clock.getDelta());
+        this.reposition();
         this.rebuild();
         this.renderer.render(this, this.camera);
     }
 
-    hall = new UnitBase(Hall);
-    library = new UnitBase(Library);
-    current: UnitBase;
-    rebuild(){
-        this.camera.position.y = 4;
+    get theta(){
+        const theta = this.controls.theta % (Math.PI * 2);
+        return theta < 0 ? theta + Math.PI * 2 : theta;
+    }
+
+    reposition(){
         let x = this.camera.position.x;
         let z = this.camera.position.z;
         echo('x', x);
         echo('z', z);
-        echo('theta', this.controls.theta);
-        echo('phi', Math.cos(this.controls.phi));
+        echo('theta', this.theta);
         if(x*x + z*z > 7*7){
             x += x > 0 ? -Room.size.x : Room.size.x;
             z += z > 0 ? -Room.size.z : Room.size.z;
-            const next = this.current !== this.hall ? this.hall : this.library;
-            this.remove(this.current);
-            this.add(next);
-            this.current = next;
+            this.current = this.current !== this.unitHall ? this.unitHall : x * z > 0 ? this.unitLibraryS : this.unitLibraryR;
         }
-        this.current.update(this.controls.theta, this.controls.phi);
         this.light.position.x = this.camera.position.x = x;
         this.light.position.z = this.camera.position.z = z;
+        this.camera.position.y = 4;
+    }
+
+    rebuild(){
+        switch(this.current){
+            case this.unitHall: return this.rebuildHall();
+            case this.unitLibraryS: return this.rebuildLibraryS();
+            case this.unitLibraryR: return this.rebuildLibraryR();
+        }
+    }
+    
+    inHalf(shift: number = 0){
+        return (this.theta - shift + Math.PI * 2) % (Math.PI * 2) < Math.PI;
+    }
+    private rebuildHall(){
+        this.unitHall.position.x = 0;
+        this.unitHall.position.z = 0;
+
+        const s = this.inHalf(Math.PI / -3) ? 1 : -1;
+        this.unitLibraryS.position.x = Room.size.x * s;
+        this.unitLibraryS.position.z = Room.size.z * s;
+        this.libraryS.position.x = -Room.size.x * s;
+        this.libraryS.position.z = -Room.size.z * s;
+        
+        const r = this.inHalf(Math.PI / 3) ? 1 : -1;
+        this.unitLibraryR.position.x = -Room.size.x * r;
+        this.unitLibraryR.position.z = Room.size.z * r;
+        this.libraryR.position.x = Room.size.x * r;
+        this.libraryR.position.z = -Room.size.z * r;
+        
+        this.hall.position.x = Room.size.x * 2 * (this.camera.position.x > 0 ? 1 : -1);
+        this.hall.position.z = Room.size.z * 2 * (this.camera.position.z > 0 ? 1 : -1);
+    }
+    private rebuildLibraryS(){
+        this.unitLibraryS.position.x = 0;
+        this.unitLibraryS.position.z = 0;
+
+        const d = this.inHalf(Math.PI / -3) ? 1 : -1;
+        this.unitHall.position.x = Room.size.x * d;
+        this.unitHall.position.z = Room.size.z * d;
+        this.hall.position.x = -Room.size.x * d;
+        this.hall.position.z = -Room.size.z * d;
+        
+        this.libraryS.position.x = Room.size.x * 2 * d;
+        this.libraryS.position.z = Room.size.z * 2 * d;
+
+        this.libraryR.position.x = Room.size.x * 2 * d;
+        this.libraryR.position.z = 0;
+
+        this.unitLibraryR.position.x = 0;
+        this.unitLibraryR.position.z = Room.size.z * 2 * d;
+    }
+    
+    private rebuildLibraryR(){
+        this.unitLibraryR.position.x = 0;
+        this.unitLibraryR.position.z = 0;
+
+        const d = this.inHalf(Math.PI / 3) ? 1 : -1;
+        this.unitHall.position.x = -Room.size.x * d;
+        this.unitHall.position.z = Room.size.z * d;
+        this.hall.position.x = Room.size.x * d;
+        this.hall.position.z = -Room.size.z * d;
+        
+        this.libraryR.position.x = -Room.size.x * 2 * d;
+        this.libraryR.position.z = Room.size.z * 2 * d;
+
+        this.libraryS.position.x = -Room.size.x * 2 * d;
+        this.libraryS.position.z = 0;
+
+        this.unitLibraryS.position.x = 0;
+        this.unitLibraryS.position.z = Room.size.z * 2 * d;
     }
     
 }
