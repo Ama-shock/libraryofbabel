@@ -1,5 +1,6 @@
-import {WebGLRenderer, Scene, Fog, PerspectiveCamera, HemisphereLight, PointLight, FirstPersonControls, Camera, Clock, Vector3} from 'three';
+import {Scene, Fog, HemisphereLight, Vector3, Raycaster} from 'three';
 import {Hall, Library, Unit, Room} from './3DObjects';
+import { Player } from './Player';
 
 function echo(...str: any[]){
     const article = document.querySelector('article');
@@ -12,42 +13,24 @@ function clear(){
     article && article.querySelectorAll('p').forEach(p=>p.remove());
 }
 
+const r3 = Math.tan(Math.PI / 3.0);
 export default class MainScene extends Scene{
-    readonly clock = new Clock();
-    readonly camera: Camera;
-    readonly light: PointLight;
-    readonly controls: FirstPersonControls;
-
-    current: Unit;
-    unitHall = new Unit(Hall);
-    unitLibraryS = new Unit(Library).rotateY(Math.PI / 3);
-    unitLibraryR = new Unit(Library).rotateY(Math.PI / -3);
+    current: Unit<any>;
+    unitHall = new Unit(new Hall);
+    unitLibraryS = new Unit(new Library).rotateY(Math.PI / 3);
+    unitLibraryR = new Unit(new Library).rotateY(Math.PI / -3);
     hall = new Hall();
     libraryS = new Library().rotateY(Math.PI / 3);
     libraryR = new Library().rotateY(Math.PI / -3);
 
-    constructor(readonly renderer: WebGLRenderer){
+    constructor(readonly player: Player){
         super();
-        const r3 = Math.tan(Math.PI / 3.0);
-        const size = renderer.getSize();
-        this.camera = new PerspectiveCamera(45, size.width / size.height, 0.1, 12 * r3);
-        this.camera.position.set(0, 4, 3);
-
-        this.light = new PointLight(0xFFFFFF, 1, 8, 0.5);
-        this.light.position.y = 4;
-        this.add(this.light);
-        
-        const ambientLight = new HemisphereLight(0xbbbbbb, 0x888833, 1.0);
-        this.add(ambientLight);
-
         this.fog = new Fog(0x000000, 6 * r3, 9 * r3);
         
-        this.controls = new FirstPersonControls(this.camera, renderer.domElement);
-        this.controls.lookSpeed = 0.1;
-        this.controls.movementSpeed = 5;
+        const ambientLight = new HemisphereLight(0xbbbbbb, 0x888833, 1.0);
         
-        this.current = this.unitHall;
         this.add(
+            ambientLight,
             this.unitHall,
             this.unitLibraryS,
             this.unitLibraryR,
@@ -55,35 +38,62 @@ export default class MainScene extends Scene{
             this.libraryS,
             this.libraryR
         );
+        this.current = this.unitHall;
+
+        player.intoScene(this, new Vector3(0, 4, -2 * r3));
     }
 
     render(){
         clear();
-        this.controls.update(this.clock.getDelta());
         this.reposition();
         this.rebuild();
-        this.renderer.render(this, this.camera);
+        this.player.render();
     }
 
-    get theta(){
-        const theta = this.controls.theta % (Math.PI * 2);
-        return theta < 0 ? theta + Math.PI * 2 : theta;
+    isAboveCarpet(pos: Vector3){
+        return this.unitHall.base.isAboveCarpet(pos) ||
+        this.unitLibraryS.base.isAboveCarpet(pos) ||
+        this.unitLibraryR.base.isAboveCarpet(pos) ||
+        this.hall.isAboveCarpet(pos) ||
+        this.libraryS.isAboveCarpet(pos) ||
+        this.libraryR.isAboveCarpet(pos);
     }
 
+    isAboveStair(pos: Vector3){
+        return this.unitHall.base.isAboveStair(pos);
+    }
+
+    enterable(prev: Vector3, next: Vector3){
+        if(!this.isAboveCarpet(next) && !this.isAboveStair(next)) return false;
+        if(this.isAboveStair(prev) && this.isAboveStair(next)) return true;
+        const p = this.isAboveCarpet(prev) ? 0 : Hall.stairHeight(prev);
+        const n = this.isAboveCarpet(next) ? 0 : Hall.stairHeight(next);
+        return !p && !n;
+    }
+    
     reposition(){
-        let x = this.camera.position.x;
-        let z = this.camera.position.z;
-        echo('x', x);
-        echo('z', z);
-        echo('theta', this.theta);
-        if(x*x + z*z > 7*7){
-            x += x > 0 ? -Room.size.x : Room.size.x;
-            z += z > 0 ? -Room.size.z : Room.size.z;
-            this.current = this.current !== this.unitHall ? this.unitHall : x * z > 0 ? this.unitLibraryS : this.unitLibraryR;
+        const prev = this.player.position.clone();
+        this.player.move();
+        const next = this.player.position;
+        if(this.isAboveStair(prev) && !this.isAboveCarpet(next)) next.y = Hall.stairHeight(next) +4;
+
+        const h = this.isAboveCarpet(next) ? 0 : Hall.stairHeight(next);
+        echo('x', next.x);
+        echo('z', next.z);
+        echo('on Carpet/Stair', this.isAboveCarpet(next), this.isAboveStair(next));
+        echo('height', h);
+        if(!this.enterable(prev, next)){
+            return next.set(prev.x, prev.y, prev.z);
         }
-        this.light.position.x = this.camera.position.x = x;
-        this.light.position.z = this.camera.position.z = z;
-        this.camera.position.y = 4;
+
+        if(next.x*next.x + next.z*next.z > 7*7){
+            next.x += next.x > 0 ? -Room.size.x : Room.size.x;
+            next.z += next.z > 0 ? -Room.size.z : Room.size.z;
+            this.current =
+                this.current !== this.unitHall ? this.unitHall :
+                next.x * next.z > 0 ? this.unitLibraryS :
+                this.unitLibraryR;
+        }
     }
 
     rebuild(){
@@ -95,11 +105,10 @@ export default class MainScene extends Scene{
     }
     
     inHalf(shift: number = 0){
-        return (this.theta - shift + Math.PI * 2) % (Math.PI * 2) < Math.PI;
+        return (this.player.theta - shift + Math.PI * 2) % (Math.PI * 2) < Math.PI;
     }
     private rebuildHall(){
-        this.unitHall.position.x = 0;
-        this.unitHall.position.z = 0;
+        this.unitHall.position.set(0, 0, 0);
 
         const s = this.inHalf(Math.PI / -3) ? 1 : -1;
         this.unitLibraryS.position.x = Room.size.x * s;
@@ -113,12 +122,11 @@ export default class MainScene extends Scene{
         this.libraryR.position.x = Room.size.x * r;
         this.libraryR.position.z = -Room.size.z * r;
         
-        this.hall.position.x = Room.size.x * 2 * (this.camera.position.x > 0 ? 1 : -1);
-        this.hall.position.z = Room.size.z * 2 * (this.camera.position.z > 0 ? 1 : -1);
+        this.hall.position.x = Room.size.x * 2 * (this.player.position.x > 0 ? 1 : -1);
+        this.hall.position.z = Room.size.z * 2 * (this.player.position.z > 0 ? 1 : -1);
     }
     private rebuildLibraryS(){
-        this.unitLibraryS.position.x = 0;
-        this.unitLibraryS.position.z = 0;
+        this.unitLibraryS.position.set(0, 0, 0);
 
         const d = this.inHalf(Math.PI / -3) ? 1 : -1;
         this.unitHall.position.x = Room.size.x * d;
@@ -137,8 +145,7 @@ export default class MainScene extends Scene{
     }
     
     private rebuildLibraryR(){
-        this.unitLibraryR.position.x = 0;
-        this.unitLibraryR.position.z = 0;
+        this.unitLibraryR.position.set(0, 0, 0);
 
         const d = this.inHalf(Math.PI / 3) ? 1 : -1;
         this.unitHall.position.x = -Room.size.x * d;

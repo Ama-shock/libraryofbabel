@@ -1,4 +1,4 @@
-import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight, MeshBasicMaterial, Group, MeshPhongMaterial} from 'three';
+import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight, MeshBasicMaterial, Group, MeshPhongMaterial, Vector3, Raycaster} from 'three';
 import {wood, cloth, paper} from './textures';
 
 const r3 = Math.tan(Math.PI / 3.0);
@@ -124,11 +124,11 @@ export class DoorGeometry extends Geometry{
         this.merge(pillar, new Matrix4().makeTranslation(1.5, 2.9, -3 * r3));
     }
 
-    knob(){
+    static knob(){
         const geo = new Geometry();
 
         geo.merge(new CylinderGeometry(0.02, 0.02, 0.5).translate(-1.3, 1.5, -3 * r3 + 0.1));
-        geo.merge(new CylinderGeometry(0.02, 0.02, 0.5).translate(-1.3, 5.5, -3 * r3 + 0.1));
+        geo.merge(new CylinderGeometry(0.02, 0.02, 0.5).translate(-1.3, 5.0, -3 * r3 + 0.1));
         geo.merge(new CylinderGeometry(0.05, 0.05, 0.5).rotateZ(Math.PI / 2).translate(1, 3, -3 * r3 + 0.3));
         geo.merge(new CylinderGeometry(0.03, 0.03, 0.3).rotateX(Math.PI / 2).translate(1.1, 3, -3 * r3 + 0.15));
         geo.merge(new BoxGeometry(0.3, 0.6, 0.05), new Matrix4().makeTranslation(1.1, 2.8, -3 * r3 + 0.125));
@@ -140,17 +140,11 @@ export class DoorGeometry extends Geometry{
 export class StairGeometry extends Geometry{
     constructor(){
         super();
-        this.merge(new CylinderGeometry(0.2, 0.2, 9.5).translate(0, 4.25, 0));
-        const pillar = new CylinderGeometry(0.12, 0.12, 9).translate(0, 4.5, -1.6 * r3);
-        const pillars = new Geometry();
-        [1, 2, 3, 4].forEach(i =>{
-            pillars.merge(pillar, new Matrix4().makeTranslation(i * 3 / 4 -1.5, 0, 0));
-        });
-
-        const floor = new BoxGeometry(0.8, 0.5, 1.6 * r3).translate(-1.2, -0.25, -0.8 * r3);
+        const floor = new BoxGeometry(0.85, 0.5, 1.7 * r3).translate(-1.275, -0.25, -0.85 * r3);
         const steps = new Geometry();
+        
         [0, 1, 2, 3].forEach(i=>{
-            const f = floor.clone().translate(i * 0.8, 0, 0);
+            const f = floor.clone().translate(i * 0.85, 0, 0);
             [0, 2, 5, 7].forEach(i =>f.vertices[i].x = 0);
             this.merge(f);
             steps.merge(f, new Matrix4().makeTranslation(0, i * 0.5 - 2, 0));
@@ -158,8 +152,33 @@ export class StairGeometry extends Geometry{
         
         [1, 2, 3, 4, 5].forEach(r =>{
             this.merge(steps.translate(0, 2, 0), new Matrix4().makeRotationY(-Math.PI * r / 3));
-            this.merge(pillars, new Matrix4().makeRotationY(Math.PI * r / 3));
         });
+    }
+
+    static pillars(){
+        const geo = new Geometry();
+        geo.merge(new CylinderGeometry(0.2, 0.2, 9.5).translate(0, 4.25, 0));
+        const pillar = new CylinderGeometry(0.12, 0.12, 9).translate(-1.5, 4.5, -1.6 * r3);
+        geo.merge(pillar);
+        const pillars = new Geometry();
+        [0, 1, 2, 3].forEach(i =>{
+            pillars.merge(pillar, new Matrix4().makeTranslation(i * 3/4, 0, 0));
+        });
+        geo.merge(new HexGeometry(pillars, [1, 2, 3, 4, 5]));
+
+        return geo;
+    }
+    
+    static radian(pos: Vector3){
+        let rad = Math.atan(pos.z / pos.x);
+        if(pos.x < 0) rad += Math.PI;
+        rad += Math.PI * 8/3;
+        return rad % (Math.PI * 2);
+    }
+
+    static height(pos: Vector3){
+        const rad = this.radian(pos);
+        return rad < Math.PI/3 ? 0 : 9.5 * (rad/Math.PI - 1/3) * 3/5;
     }
 }
 
@@ -188,17 +207,19 @@ export abstract class Room extends Object3D{
     abstract setup(): void;
 
     woodGeo = new Geometry();
-    clothGeo = new Geometry();
     paperGeo = new Geometry();
+    carpetGeo = new Geometry();
+    carpetMesh: Mesh;
     constructor(){
         super();
         this.woodGeo.merge(new FloorGeometry());
-        this.clothGeo.merge(new CarpetGeometry());
+        this.carpetGeo.merge(new CarpetGeometry());
         this.setup();
+        this.carpetMesh = new Mesh(this.carpetGeo, cloth);
         this.add(
             new Mesh(this.woodGeo, wood),
-            new Mesh(this.clothGeo, cloth),
-            new Mesh(this.paperGeo, paper)
+            new Mesh(this.paperGeo, paper),
+            this.carpetMesh
         );
         this.setLamp();
     }
@@ -218,21 +239,31 @@ export abstract class Room extends Object3D{
     illuminateLamps(){
         this.lamps.forEach(l=>l.illuminate());
     }
+
+    isAboveCarpet(position: Vector3, range: number = 5){
+        const ray = new Raycaster(position, new Vector3(0, -1, 0), 0, range);
+        const list = ray.intersectObjects([this.carpetMesh]);
+        return !!list.find(int=> int.object === this.carpetMesh);
+    }
 }
 
 export class Hall extends Room{
+    stairMesh!: Mesh;
     setup(){
-        this.woodGeo.merge(new StairGeometry());
+        this.stairMesh = new Mesh(new StairGeometry(), wood);
+        this.add(this.stairMesh);
         
         const wall = new WallGeometry();
         this.paperGeo.merge(wall);
         this.paperGeo.merge(wall, new Matrix4().makeRotationY(Math.PI));
         
+        this.woodGeo.merge(StairGeometry.pillars());
+
         const door = new DoorGeometry();
         this.woodGeo.merge(door);
         this.woodGeo.merge(door, new Matrix4().makeRotationY(Math.PI));
 
-        const knob = door.knob();
+        const knob = DoorGeometry.knob();
         knob.merge(knob, new Matrix4().makeRotationY(Math.PI));
         this.add(new Mesh(knob, new MeshPhongMaterial({color: 0xaaaaaa})));
 
@@ -242,7 +273,7 @@ export class Hall extends Room{
     setPathGeometry(rotate: number){
         const trans = new Matrix4().makeRotationY(Math.PI * rotate / 3.0);
         const floor = new PlaneGeometry(6, 2).rotateX(Math.PI / -2).translate(0, 0, -3 * r3 -1);
-        this.clothGeo.merge(floor, trans);
+        this.carpetGeo.merge(floor, trans);
         
         const cealing = new PlaneGeometry(6, 2).rotateX(Math.PI / 2).translate(0, 9, -3 * r3 -1);
         this.woodGeo.merge(cealing, trans);
@@ -252,7 +283,16 @@ export class Hall extends Room{
         this.paperGeo.merge(wall, trans);
         this.paperGeo.merge(wall2, trans);
     }
+    
+    isAboveStair(position: Vector3, range: number = 5){
+        const ray = new Raycaster(position, new Vector3(0, -1, 0), 0, range);
+        const list = ray.intersectObjects([this.stairMesh]);
+        return !!list.find(int=> int.object === this.stairMesh);
+    }
 
+    static stairHeight(pos: Vector3){
+        return StairGeometry.height(pos);
+    }
 }
 
 export class Library extends Room{
@@ -270,11 +310,9 @@ export class Library extends Room{
 
 }
 
-export class Unit extends Group{
-    base: Library|Hall;
-    constructor(Type: typeof Library|typeof Hall){
+export class Unit<T extends Library|Hall> extends Group{
+    constructor(readonly base: T){
         super();
-        this.base = new Type();
         this.add(this.base);
         this.add(this.base.clone().translateY(-Room.size.y));
         this.add(this.base.clone().translateY(Room.size.y));
@@ -282,40 +320,3 @@ export class Unit extends Group{
     }
 }
 
-export class HallBase extends Unit{
-    constructor(){
-        super(Hall);
-
-        [0, 1, 2, 3].forEach(i=>{
-            const x = i & 1 ? 1 : -1;
-            const z = i & 2 ? 1 : -1;
-            this.add(new Unit(Library).translateX(Room.size.x * x).translateZ(Room.size.z * z).rotateY(Math.PI / 3 * x * z));
-            this.add(new Hall().translateX(Room.size.x * 2 * x).translateZ(Room.size.z * 2 * z));
-        });
-    }
-}
-
-export class LibraryBaseS extends Unit{
-    constructor(){
-        super(Library);
-
-        [-1, 1].forEach(i=>{
-            this.add(new Unit(Hall).translateZ(Room.size.z * 2 * i).rotateY(Math.PI / 3));
-            this.add(new Library().translateZ(Room.size.z * 4 * i));
-            this.add(new Library().translateX(-Room.size.x).translateZ(Room.size.z * 3 * i).rotateY(Math.PI / -3));
-        });
-        this.rotateY(Math.PI / -3);
-    }
-}
-export class LibraryBaseR extends Unit{
-    constructor(){
-        super(Library);
-
-        [-1, 1].forEach(i=>{
-            this.add(new Unit(Hall).translateZ(Room.size.z * 2 * i).rotateY(Math.PI / -3));
-            this.add(new Library().translateZ(Room.size.z * 4 * i));
-            this.add(new Library().translateX(Room.size.x).translateZ(Room.size.z * 3 * i).rotateY(Math.PI / 3));
-        });
-        this.rotateY(Math.PI / 3);
-    }
-}

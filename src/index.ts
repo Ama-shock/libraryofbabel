@@ -1,6 +1,7 @@
 import './extension';
 import {WebGLRenderer, GridHelper} from 'three';
 import MainScene from './MainScene';
+import { Player } from './Player';
 
 Object.defineProperty(self, 'capture', {value: ()=>{
     let canvas = document.querySelector('canvas') as any;
@@ -22,8 +23,8 @@ window.addEventListener('load', async()=>{
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(960, 540);
 
-    const scene = new MainScene(renderer);
-    //scene.add(new GridHelper(100, 100));
+    const player = new Player(renderer);
+    const scene = new MainScene(player);
 
     while(true) {
         scene.render();
