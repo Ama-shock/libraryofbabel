@@ -45,8 +45,12 @@ export default class MainScene extends Scene{
 
     render(){
         clear();
-        this.reposition();
+        const prev = this.player.position.clone();
+        this.player.update(next=>this.reposition(prev, next));
+        
         this.rebuild();
+
+        echo(this.roomNo);
         this.player.render();
     }
 
@@ -63,6 +67,10 @@ export default class MainScene extends Scene{
         return this.unitHall.base.isAboveStair(pos);
     }
 
+    height(pos: Vector3){
+        return this.isAboveCarpet(pos) ? 0 : Hall.stairHeight(pos);
+    }
+
     enterable(prev: Vector3, next: Vector3){
         if(!this.isAboveCarpet(next) && !this.isAboveStair(next)) return false;
         if(this.isAboveStair(prev) && this.isAboveStair(next)) return true;
@@ -71,29 +79,62 @@ export default class MainScene extends Scene{
         return !p && !n;
     }
     
-    reposition(){
-        const prev = this.player.position.clone();
-        this.player.move();
-        const next = this.player.position;
-        if(this.isAboveStair(prev) && !this.isAboveCarpet(next)) next.y = Hall.stairHeight(next) +4;
-
-        const h = this.isAboveCarpet(next) ? 0 : Hall.stairHeight(next);
-        echo('x', next.x);
-        echo('z', next.z);
-        echo('on Carpet/Stair', this.isAboveCarpet(next), this.isAboveStair(next));
-        echo('height', h);
-        if(!this.enterable(prev, next)){
-            return next.set(prev.x, prev.y, prev.z);
+    reposition(prev: Vector3, next: Vector3){
+        if(this.isAboveStair(prev)){
+            if(this.isAboveCarpet(next)) return Hall.stairHeight(prev) ? prev : next;
+            next.y = Hall.stairHeight(next) +4;
+            if(!this.isAboveStair(next)) return prev;
+            if(next.y - prev.y > 8) this.moveRoom(0,0,-1);
+            if(next.y - prev.y < -8) this.moveRoom(0,0,1);
+            return next;
         }
+
+        if(this.isAboveStair(next)) return Hall.stairHeight(next) ? prev : next;
 
         if(next.x*next.x + next.z*next.z > 7*7){
             next.x += next.x > 0 ? -Room.size.x : Room.size.x;
             next.z += next.z > 0 ? -Room.size.z : Room.size.z;
-            this.current =
-                this.current !== this.unitHall ? this.unitHall :
-                next.x * next.z > 0 ? this.unitLibraryS :
-                this.unitLibraryR;
+            switch(this.current){
+                case this.unitHall:
+                if(next.x > 0){
+                    if(next.z > 0){
+                        this.current = this.unitLibraryS;
+                    }else{
+                        this.current = this.unitLibraryR;
+                        this.moveRoom(1, 0, 0);
+                    }
+                }else{
+                    if(next.z > 0){
+                        this.current = this.unitLibraryR;
+                        this.moveRoom(0, 1, 0);
+                    }else{
+                        this.current = this.unitLibraryS;
+                        this.moveRoom(1, 1, 0);
+                    }
+                }
+                break;
+
+                case this.unitLibraryS:
+                if(next.x > 0) this.moveRoom(-1, -1, 0);
+                this.current = this.unitHall;
+                break;
+
+                case this.unitLibraryR:
+                if(next.x > 0) this.moveRoom(0, -1, 0);
+                else this.moveRoom(-1, 0, 0);
+                this.current = this.unitHall;
+                break;
+            }
         }
+
+        return this.isAboveCarpet(next) ? next : prev;
+    }
+
+    roomNo = [0,0,0];
+    moveRoom(z: number, x:number, y:number){
+        this.roomNo[0] += z;
+        this.roomNo[1] += x;
+        this.roomNo[2] += y;
     }
 
     rebuild(){

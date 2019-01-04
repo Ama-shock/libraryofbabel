@@ -51,50 +51,65 @@ export class Player extends PerspectiveCamera{
     movementSpeed = 5;
     theta = 0;
     phi = 0;
-    move(){
-        const delta = this.clock.getDelta();
-        if(this.moving){
-            if(this.control.x < -0.6) this.theta -= this.lookSpeed * delta;
-            if(this.control.x > 0.6) this.theta += this.lookSpeed * delta;
-            this.theta %= Math.PI * 2;
-            if(this.theta < 0) this.theta += Math.PI * 2;
+    direct(delta: number){
+        if(this.control.x < -0.6) this.theta -= this.lookSpeed * delta;
+        if(this.control.x > 0.6) this.theta += this.lookSpeed * delta;
+        this.theta %= Math.PI * 2;
+        if(this.theta < 0) this.theta += Math.PI * 2;
 
-            if(this.control.y < -0.6) this.phi -= this.lookSpeed * delta;
-            if(this.control.y > 0.6) this.phi += this.lookSpeed * delta;
-            this.phi = Math.min(Math.PI / 2, Math.max(-Math.PI / 2, this.phi));
-
-            if(
-                -0.8 < this.control.x && this.control.x < 0.8 &&
-                -0.8 < this.control.y && this.control.y < 0.8
-            ){
-                this.position.x += Math.cos(this.theta) * this.movementSpeed * delta;
-                this.position.z += Math.sin(this.theta) * this.movementSpeed * delta;
-            }
-        }
-        
-        const target = new Vector3();
-		target.x = this.position.x + 100 * Math.cos(this.theta) * Math.cos(this.phi);
-		target.z = this.position.z + 100 * Math.sin(this.theta) * Math.cos(this.phi);
-		target.y = this.position.y + 100 * Math.sin(this.phi);
-
-		this.lookAt(target);
+        if(this.control.y < -0.6) this.phi -= this.lookSpeed * delta;
+        if(this.control.y > 0.6) this.phi += this.lookSpeed * delta;
+        this.phi = Math.min(Math.PI / 2, Math.max(-Math.PI / 2, this.phi));
     }
 
-    intoScene(scene: Scene, pos: Vector3, lookAt?: {theta: number, phi: number}){
-        if(this.scene) this.scene.remove(this.light);
-        this.position.set(pos.x, pos.y, pos.z);
-        if(lookAt){
-            this.theta = lookAt.theta;
-            this.phi = lookAt.phi;
+    next(delta: number){
+        this.direct(delta);
+        const pos = this.position.clone();
+        if(
+            -0.8 < this.control.x && this.control.x < 0.8 &&
+            -0.8 < this.control.y && this.control.y < 0.8
+        ){
+            pos.x += Math.cos(this.theta) * this.movementSpeed * delta;
+            pos.z += Math.sin(this.theta) * this.movementSpeed * delta;
         }
+        return pos;
+    }
+
+    move(pos: Vector3){
+        this.position.set(pos.x, pos.y, pos.z);
+        this.light.position.set(this.position.x, this.position.y, this.position.z);
+        return this;
+    }
+
+    look(lookTo: {theta?: number, phi?: number} = {}){
+        if('theta' in lookTo) this.theta = lookTo.theta!;
+        if('phi' in lookTo) this.theta = lookTo.phi!;
+        this.lookAt(new Vector3(
+		    this.position.x + 100 * Math.cos(this.theta) * Math.cos(this.phi),
+		    this.position.y + 100 * Math.sin(this.phi),
+		    this.position.z + 100 * Math.sin(this.theta) * Math.cos(this.phi)
+        ));
+        return this;
+    }
+    
+    update(repos?: (next: Vector3)=>Vector3){
+        const delta = this.clock.getDelta();
+        if(!this.moving) return;
+        let next = this.next(delta);
+        if(repos) next = repos(next);
+        return this.move(next).look();
+    }
+
+    intoScene(scene: Scene, pos: Vector3, lookTo?: {theta?: number, phi?: number}){
+        if(this.scene) this.scene.remove(this.light);
+        this.move(pos);
         this.scene = scene;
         this.scene.add(this.light);
-        this.move();
+        this.look(lookTo);
     }
 
     render(){
         if(!this.scene) return;
-        this.light.position.set(this.position.x, this.position.y, this.position.z);
         this.renderer.render(this.scene, this);
     }
 }
