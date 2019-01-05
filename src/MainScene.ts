@@ -1,5 +1,5 @@
 import {Scene, Fog, HemisphereLight, Vector3, Raycaster} from 'three';
-import {Hall, Library, Unit, Room} from './3DObjects';
+import {Hall, Library, Unit, Room, BookSelector} from './3DObjects';
 import { Player } from './Player';
 
 function echo(...str: any[]){
@@ -22,6 +22,7 @@ export default class MainScene extends Scene{
     hall = new Hall();
     libraryS = new Library().rotateY(Math.PI / 3);
     libraryR = new Library().rotateY(Math.PI / -3);
+    bookSelectors: BookSelector[];
 
     constructor(readonly player: Player){
         super();
@@ -29,6 +30,13 @@ export default class MainScene extends Scene{
         
         const ambientLight = new HemisphereLight(0xbbbbbb, 0x888833, 1.0);
         
+        this.bookSelectors = [0, 1, 2, 3, 4, 5].map(r=>{
+            const selector = new BookSelector();
+            selector.rotateY(Math.PI * r / 3);
+            this.add(selector);
+            return selector;
+        });
+
         this.add(
             ambientLight,
             this.unitHall,
@@ -47,36 +55,44 @@ export default class MainScene extends Scene{
         clear();
         const prev = this.player.position.clone();
         this.player.update(next=>this.reposition(prev, next));
-        
+        this.bookSelect();
         this.rebuild();
 
         echo(this.roomNo);
+        echo('selected', this.selectedShelf ? this.selectedShelf.selectedId : -1);
+        echo('above', this.isAboveStair(this.player.position), this.isAboveCarpet(this.player.position));
         this.player.render();
+    }
+
+    getEnableShelfs(){
+        const l = this.bookSelectors;
+        if(this.current == this.unitLibraryS) return [l[0], l[2], l[3], l[5]];
+        if(this.current == this.unitLibraryR) return [l[0], l[1], l[3], l[4]];
+        return [];
+    }
+    selectedShelf?: BookSelector;
+    bookSelect(){
+        if(this.player.touching){
+            this.selectedShelf && this.selectedShelf.clear();
+            this.selectedShelf = this.getEnableShelfs().find(selector=>{
+                return selector.select(this.player, this.player.control) > -1;
+            });
+        }
+
+        if(!this.selectedShelf) return -1;
+        this.selectedShelf.update();
+        return this.selectedShelf.selectedId;
     }
 
     isAboveCarpet(pos: Vector3){
         return this.unitHall.base.isAboveCarpet(pos) ||
-        this.unitLibraryS.base.isAboveCarpet(pos) ||
-        this.unitLibraryR.base.isAboveCarpet(pos) ||
-        this.hall.isAboveCarpet(pos) ||
-        this.libraryS.isAboveCarpet(pos) ||
-        this.libraryR.isAboveCarpet(pos);
+            this.unitLibraryS.base.isAboveCarpet(pos) ||
+            this.unitLibraryR.base.isAboveCarpet(pos) ||
+            this.hall.isAboveCarpet(pos);
     }
 
     isAboveStair(pos: Vector3){
-        return this.unitHall.base.isAboveStair(pos);
-    }
-
-    height(pos: Vector3){
-        return this.isAboveCarpet(pos) ? 0 : Hall.stairHeight(pos);
-    }
-
-    enterable(prev: Vector3, next: Vector3){
-        if(!this.isAboveCarpet(next) && !this.isAboveStair(next)) return false;
-        if(this.isAboveStair(prev) && this.isAboveStair(next)) return true;
-        const p = this.isAboveCarpet(prev) ? 0 : Hall.stairHeight(prev);
-        const n = this.isAboveCarpet(next) ? 0 : Hall.stairHeight(next);
-        return !p && !n;
+        return this.current == this.unitHall && this.unitHall.base.isAboveStair(pos);
     }
     
     reposition(prev: Vector3, next: Vector3){
@@ -90,8 +106,10 @@ export default class MainScene extends Scene{
         }
 
         if(this.isAboveStair(next)) return Hall.stairHeight(next) ? prev : next;
+        if(!this.isAboveCarpet(next)) return prev;
 
         if(next.x*next.x + next.z*next.z > 7*7){
+            this.selectedShelf && this.selectedShelf.clear();
             next.x += next.x > 0 ? -Room.size.x : Room.size.x;
             next.z += next.z > 0 ? -Room.size.z : Room.size.z;
             switch(this.current){
@@ -126,8 +144,7 @@ export default class MainScene extends Scene{
                 break;
             }
         }
-
-        return this.isAboveCarpet(next) ? next : prev;
+        return next;
     }
 
     roomNo = [0,0,0];

@@ -1,4 +1,4 @@
-import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight, MeshBasicMaterial, Group, MeshPhongMaterial, Vector3, Raycaster} from 'three';
+import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight, MeshBasicMaterial, Group, MeshPhongMaterial, Vector3, Raycaster, Camera, Vector2, Intersection, Material} from 'three';
 import {wood, cloth, paper} from './textures';
 
 const r3 = Math.tan(Math.PI / 3.0);
@@ -101,6 +101,57 @@ export class BooksGeometry extends Geometry{
         cover.merge(front, new Matrix4().makeTranslation(0.075, 0, 0));
         cover.translate(0, 0, z);
         return [cover, page];
+    }
+}
+
+export class BookSelector extends Group{
+    private caster = new Raycaster();
+    private list: Mesh[] = [];
+    private selected?: Mesh;
+
+    constructor(){
+        super();
+
+        const geo = new PlaneGeometry(0.16, 0.7).translate(-3 + 5/12, 0.95, -3 * r3 - 0.23);
+        const mat = new MeshBasicMaterial({color: 0xff0000, transparent: true, visible: false});
+        
+        for(let x = 0; x < 32; x++){
+            for(let y = 0; y < 8; y++){
+                const mesh = new Mesh(geo, mat.clone()).translateX(x/6).translateY(y);
+                this.list.push(mesh);
+                this.add(mesh);
+            }
+        }
+        this.caster.far = 3 * r3;
+    }
+
+    get selectedId(){
+        return this.selected ? this.list.indexOf(this.selected) : -1;
+    }
+    set selectedId(id: number){
+        this.clear();
+        this.selected = this.list[id];
+        if(!this.selected) return;
+        (this.selected.material as Material).visible = true;
+    }
+
+    clear(){
+        if(!this.selected) return;
+        (this.selected.material as Material).visible = false;
+        (this.selected.material as Material).opacity = 1;
+        delete this.selected;
+    }
+
+    select(camera: Camera, point: Vector2){
+        this.caster.setFromCamera(point, camera);
+        const intersects = this.caster.intersectObjects(this.list);
+        const mesh = intersects[0] && intersects[0].object as Mesh;
+        return this.selectedId = this.list.indexOf(mesh);
+    }
+
+    update(){
+        if(!this.selected) return;
+        (this.selected.material as Material).opacity = (Math.sin(Date.now()/200) + 1) /2;
     }
 }
 

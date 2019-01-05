@@ -1,4 +1,4 @@
-import { PerspectiveCamera, WebGLRenderer, Scene, Vector3, Clock, PointLight } from "three";
+import { PerspectiveCamera, WebGLRenderer, Scene, Vector3, Clock, PointLight, Vector2 } from "three";
 const r3 = Math.tan(Math.PI / 3.0);
 
 export class Player extends PerspectiveCamera{
@@ -27,12 +27,12 @@ export class Player extends PerspectiveCamera{
         document.addEventListener('touchcancel', ev=>this.onLeave(ev));
     }
 
-    private moving: boolean = false;
-    private control = {x: 0, y: 0};
+    touching: boolean = false;
+    control = new Vector2(0, 0);
     private onTouch(ev: TouchEvent|MouseEvent){
 		ev.preventDefault();
         ev.stopPropagation();
-        this.moving = true;
+        this.touching = true;
         this.onMove(ev);
     }
     private onMove(ev: TouchEvent|MouseEvent){
@@ -44,7 +44,7 @@ export class Player extends PerspectiveCamera{
     private onLeave(ev: TouchEvent|MouseEvent){
 		ev.preventDefault();
 		ev.stopPropagation();
-        this.moving = false;
+        this.touching = false;
     }
     
     lookSpeed = 1;
@@ -94,7 +94,7 @@ export class Player extends PerspectiveCamera{
     
     update(repos?: (next: Vector3)=>Vector3){
         const delta = this.clock.getDelta();
-        if(!this.moving) return;
+        if(!this.touching) return;
         let next = this.next(delta);
         if(repos) next = repos(next);
         return this.move(next).look();
