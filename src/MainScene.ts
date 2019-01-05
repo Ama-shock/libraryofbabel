@@ -75,7 +75,7 @@ export default class MainScene extends Scene{
         if(this.player.touching){
             this.selectedShelf && this.selectedShelf.clear();
             this.selectedShelf = this.getEnableShelfs().find(selector=>{
-                return selector.select(this.player, this.player.control) > -1;
+                return selector.select(this.player) > -1;
             });
         }
 

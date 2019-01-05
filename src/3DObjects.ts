@@ -1,5 +1,6 @@
 import {Matrix4, Object3D, Geometry, BoxGeometry, CylinderGeometry, PlaneGeometry, Mesh, MeshLambertMaterial, PointLight, MeshBasicMaterial, Group, MeshPhongMaterial, Vector3, Raycaster, Camera, Vector2, Intersection, Material} from 'three';
 import {wood, cloth, paper} from './textures';
+import { Player } from './Player';
 
 const r3 = Math.tan(Math.PI / 3.0);
 export class HexGeometry extends Geometry{
@@ -35,12 +36,12 @@ export class CarpetGeometry extends HexGeometry{
 export class HandrailGeometry extends HexGeometry{
     constructor(){
         let part = new Geometry();
-        const bar = new CylinderGeometry(0.1, 0.1, 3.0);
+        const bar = new CylinderGeometry(0.1, 0.1, 3.2);
         bar.rotateZ(Math.PI / 2.0);
-        bar.translate(0, 1, -1.6 * r3);
+        bar.translate(0, 3, -1.6 * r3);
         part.merge(bar);
         
-        const pillar = new CylinderGeometry(0.1, 0.1, 1.0).translate(0, 0.5, -1.6 * r3);
+        const pillar = new CylinderGeometry(0.1, 0.1, 3.0).translate(0, 1.5, -1.6 * r3);
         [-3, -2, -1, 0, 1, 2, 3].forEach(i =>{
             part.merge(pillar, new Matrix4().makeTranslation(i * 0.5, 0, 0));
         });
@@ -105,7 +106,6 @@ export class BooksGeometry extends Geometry{
 }
 
 export class BookSelector extends Group{
-    private caster = new Raycaster();
     private list: Mesh[] = [];
     private selected?: Mesh;
 
@@ -122,7 +122,6 @@ export class BookSelector extends Group{
                 this.add(mesh);
             }
         }
-        this.caster.far = 3 * r3;
     }
 
     get selectedId(){
@@ -142,11 +141,8 @@ export class BookSelector extends Group{
         delete this.selected;
     }
 
-    select(camera: Camera, point: Vector2){
-        this.caster.setFromCamera(point, camera);
-        const intersects = this.caster.intersectObjects(this.list);
-        const mesh = intersects[0] && intersects[0].object as Mesh;
-        return this.selectedId = this.list.indexOf(mesh);
+    select(player: Player){
+        return this.selectedId = this.list.indexOf(player.cast(this.list) as Mesh);
     }
 
     update(){

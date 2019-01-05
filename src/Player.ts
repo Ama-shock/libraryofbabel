@@ -1,4 +1,4 @@
-import { PerspectiveCamera, WebGLRenderer, Scene, Vector3, Clock, PointLight, Vector2 } from "three";
+import { PerspectiveCamera, WebGLRenderer, Scene, Vector3, Clock, PointLight, Vector2, Raycaster, Object3D, Mesh } from "three";
 const r3 = Math.tan(Math.PI / 3.0);
 
 export class Player extends PerspectiveCamera{
@@ -111,5 +111,13 @@ export class Player extends PerspectiveCamera{
     render(){
         if(!this.scene) return;
         this.renderer.render(this.scene, this);
+    }
+
+    
+    private caster = new Raycaster();
+    cast(list: Object3D[]){
+        this.caster.setFromCamera(this.control, this);
+        const intersects = this.caster.intersectObjects(list);
+        return intersects[0] && intersects[0].object;
     }
 }
