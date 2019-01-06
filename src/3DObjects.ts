@@ -238,7 +238,7 @@ export class Lamp extends Object3D{
         const body = new CylinderGeometry(0.25, 0, 0.25).translate(0, -0.125, 0);
         body.merge(new CylinderGeometry(0, 0.25, 0.25).translate(0, 0.125, 0));
         body.translate(Lamp.distance/2, Lamp.height, r3 * Lamp.distance/2);
-        const material = new MeshBasicMaterial({color: 0xffffbb, opacity: 0.2});
+        const material = new MeshBasicMaterial({color: 0xffffbb, transparent: true, opacity: 0.5});
         this.add(new Mesh(body, material));
     }
 

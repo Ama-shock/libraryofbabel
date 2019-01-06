@@ -2,17 +2,6 @@ import {Scene, Fog, HemisphereLight, Vector3, Raycaster} from 'three';
 import {Hall, Library, Unit, Room, BookSelector} from './3DObjects';
 import { Player } from './Player';
 
-function echo(...str: any[]){
-    const article = document.querySelector('article');
-    const p = document.createElement('p');
-    p.textContent = str.join(' ');
-    article && article.appendChild(p);
-}
-function clear(){
-    const article = document.querySelector('article');
-    article && article.querySelectorAll('p').forEach(p=>p.remove());
-}
-
 const r3 = Math.tan(Math.PI / 3.0);
 export default class MainScene extends Scene{
     current: Unit<any>;
@@ -23,6 +12,9 @@ export default class MainScene extends Scene{
     libraryS = new Library().rotateY(Math.PI / 3);
     libraryR = new Library().rotateY(Math.PI / -3);
     bookSelectors: BookSelector[];
+    openButton: HTMLButtonElement;
+    jumpButton: HTMLButtonElement;
+    bookElement: HTMLDivElement;
 
     constructor(readonly player: Player){
         super();
@@ -48,19 +40,19 @@ export default class MainScene extends Scene{
         );
         this.current = this.unitHall;
 
+        this.openButton = document.querySelector('#open') as HTMLButtonElement;
+        this.jumpButton = document.querySelector('#jump') as HTMLButtonElement;
+        this.bookElement = document.querySelector('#book') as HTMLDivElement;
+        this.openButton.onclick = ()=>this.bookOpen();
+
         player.intoScene(this, new Vector3(0, 4, -2 * r3));
     }
 
     render(){
-        clear();
         const prev = this.player.position.clone();
         this.player.update(next=>this.reposition(prev, next));
         this.bookSelect();
         this.rebuild();
-
-        echo(this.roomNo);
-        echo('selected', this.selectedShelf ? this.selectedShelf.selectedId : -1);
-        echo('above', this.isAboveStair(this.player.position), this.isAboveCarpet(this.player.position));
         this.player.render();
     }
 
@@ -73,15 +65,32 @@ export default class MainScene extends Scene{
     selectedShelf?: BookSelector;
     bookSelect(){
         if(this.player.touching){
-            this.selectedShelf && this.selectedShelf.clear();
+            this.bookClear();
             this.selectedShelf = this.getEnableShelfs().find(selector=>{
                 return selector.select(this.player) > -1;
             });
+            if(this.selectedShelf) this.openButton.textContent = 'Open';
         }
 
         if(!this.selectedShelf) return -1;
         this.selectedShelf.update();
         return this.selectedShelf.selectedId;
+    }
+    bookClear(){
+        this.selectedShelf && this.selectedShelf.clear();
+        this.openButton.textContent = null;
+    }
+    bookOpen(){
+        if(this.openButton.textContent == 'Open'){
+            this.bookElement.setAttribute('show', '');
+            this.openButton.textContent = 'Close';
+            this.jumpButton.textContent = 'Jump Page';
+            return;
+        }
+        
+        this.bookElement.removeAttribute('show');
+        this.openButton.textContent = 'Open';
+        this.jumpButton.textContent = null;
     }
 
     isAboveCarpet(pos: Vector3){

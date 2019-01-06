@@ -38,8 +38,15 @@ export class Player extends PerspectiveCamera{
     private onMove(ev: TouchEvent|MouseEvent){
         const pos = (ev instanceof TouchEvent) ? ev.touches[0] : ev;
         const el = this.renderer.domElement;
-        this.control.x = (pos.pageX - el.offsetLeft) / el.offsetWidth *2 -1;
-        this.control.y = -(pos.pageY - el.offsetTop) / el.offsetHeight *2 +1;
+        let left = el.offsetLeft;
+        let top = el.offsetTop;
+        let offset = el as HTMLElement;
+        while(offset = offset.offsetParent as HTMLElement){
+            left += offset.offsetLeft;
+            top += offset.offsetTop;
+        }
+        this.control.x = (pos.pageX - left) / el.offsetWidth *2 -1;
+        this.control.y = -(pos.pageY - top) / el.offsetHeight *2 +1;
     }
     private onLeave(ev: TouchEvent|MouseEvent){
 		ev.preventDefault();
