@@ -21,7 +21,7 @@ window.addEventListener('load', async()=>{
         preserveDrawingBuffer: true
     });
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(640, 480);
+    renderer.setSize(960, 720, false);
 
     const player = new Player(renderer);
     const scene = new MainScene(player);

@@ -1,6 +1,7 @@
 import {Scene, Fog, HemisphereLight, Vector3, Raycaster} from 'three';
 import {Hall, Library, Unit, Room, BookSelector} from './3DObjects';
 import { Player } from './Player';
+import { BookSource } from './BookSource';
 
 const r3 = Math.tan(Math.PI / 3.0);
 export default class MainScene extends Scene{
@@ -14,7 +15,7 @@ export default class MainScene extends Scene{
     bookSelectors: BookSelector[];
     openButton: HTMLButtonElement;
     jumpButton: HTMLButtonElement;
-    bookElement: HTMLDivElement;
+    bookSource = new BookSource();
 
     constructor(readonly player: Player){
         super();
@@ -42,7 +43,6 @@ export default class MainScene extends Scene{
 
         this.openButton = document.querySelector('#open') as HTMLButtonElement;
         this.jumpButton = document.querySelector('#jump') as HTMLButtonElement;
-        this.bookElement = document.querySelector('#book') as HTMLDivElement;
         this.openButton.onclick = ()=>this.bookOpen();
 
         player.intoScene(this, new Vector3(0, 4, -2 * r3));
@@ -81,16 +81,18 @@ export default class MainScene extends Scene{
         this.openButton.textContent = null;
     }
     bookOpen(){
-        if(this.openButton.textContent == 'Open'){
-            this.bookElement.setAttribute('show', '');
-            this.openButton.textContent = 'Close';
-            this.jumpButton.textContent = 'Jump Page';
+        if(this.bookSource.isOpened){
+            this.bookSource.close();
+            this.openButton.textContent = 'Open';
+            this.jumpButton.textContent = null;
             return;
         }
-        
-        this.bookElement.removeAttribute('show');
-        this.openButton.textContent = 'Open';
-        this.jumpButton.textContent = null;
+        if(this.selectedShelf){
+            const shelfNo = this.getEnableShelfs().indexOf(this.selectedShelf);
+            this.bookSource.openBook(shelfNo, this.selectedShelf.selectedId);
+            this.openButton.textContent = 'Close';
+            this.jumpButton.textContent = 'Jump Page';
+        }
     }
 
     isAboveCarpet(pos: Vector3){
@@ -156,11 +158,8 @@ export default class MainScene extends Scene{
         return next;
     }
 
-    roomNo = [0,0,0];
     moveRoom(z: number, x:number, y:number){
-        this.roomNo[0] += z;
-        this.roomNo[1] += x;
-        this.roomNo[2] += y;
+        this.bookSource.moveRoom(z, x, y);
     }
 
     rebuild(){
