@@ -18,12 +18,13 @@ canvas{
 }
 
 button{
+    cursor: pointer;
     border: none;
     box-shadow: none;
     position: absolute;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     color: white;
     font-weight: bold;
 }
@@ -56,8 +57,16 @@ button:empty{
     position: absolute;
     width: 35%;
     height: 60%;
-    top: 15%;
-    background-color: rgba(255, 255, 128, 0.8);
+    top: 16%;
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+[page] p{
+    width: 2.5%;
+    font-size: 1vw;
+    text-align: center;
 }
 
 [page='left']{
@@ -67,14 +76,41 @@ button:empty{
     left: 52%;
 }
 
+[page='left'] span{
+    flex-grow: 1;
+    width: 100%;
+    text-align: left;
+}
+[page='right'] span{
+    flex-grow: 1;
+    width: 100%;
+    text-align: right;
+}
+
 button#open{
     background-color: coral;
-    bottom: 5px;
-    right: 5px;
+    bottom: 10px;
+    right: 10px;
 }
 
 button#jump{
     background-color: greenyellow;
-    bottom: 5px;
-    right: 60px;
+    bottom: 10px;
+    right: 80px;
+}
+
+[start]{
+    top: calc(50% - 30px);
+}
+[start="alpha"]{
+    background-color: blue;
+    left: calc(25% - 30px);
+}
+[start="kana"]{
+    background-color: red;
+    left: calc(50% - 30px);
+}
+[start="any"]{
+    background-color: green;
+    left: calc(75% - 30px);
 }

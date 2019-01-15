@@ -15,9 +15,8 @@ export default class MainScene extends Scene{
     bookSelectors: BookSelector[];
     openButton: HTMLButtonElement;
     jumpButton: HTMLButtonElement;
-    bookSource = new BookSource();
 
-    constructor(readonly player: Player){
+    constructor(readonly player: Player, readonly bookSource: BookSource){
         super();
         this.fog = new Fog(0x000000, 6 * r3, 9 * r3);
         
@@ -44,6 +43,11 @@ export default class MainScene extends Scene{
         this.openButton = document.querySelector('#open') as HTMLButtonElement;
         this.jumpButton = document.querySelector('#jump') as HTMLButtonElement;
         this.openButton.onclick = ()=>this.bookOpen();
+        this.jumpButton.onclick = ()=>{
+            const current = this.bookSource.page.toString();
+            const page = parseInt(prompt(`ページ ${current}/640`, current)!);
+            if(page) this.bookSource.page = page;
+        };
 
         player.intoScene(this, new Vector3(0, 4, -2 * r3));
     }

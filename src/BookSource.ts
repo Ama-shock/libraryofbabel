@@ -1,14 +1,14 @@
 
 import {BigNumberEncoder} from './BigNumberEncoder';
-//Object.defineProperty(self, 'BigNumberEncoder', {value: BigNumberEncoder});
 
 export class BookSource{
     private raw: BigNumberEncoder[][];
     readonly domElement: HTMLDivElement;
-    readonly leftPage: HTMLParagraphElement;
-    readonly rightPage: HTMLParagraphElement;
+    readonly leftPage: HTMLDivElement;
+    readonly rightPage: HTMLDivElement;
 
-    constructor(){
+    constructor(readonly letterSet: string){
+        if(letterSet.length != 64) throw new Error('Invalid number of letter set.');
         this.raw = [];
         for(let i = 0; i < 160; i++){
             const row: BigNumberEncoder[] = [];
@@ -23,8 +23,11 @@ export class BookSource{
         this.raw[0][0][1] &= 0xfc;
         
         this.domElement = document.querySelector('#book') as HTMLDivElement;
-        this.leftPage = this.domElement.querySelector('[page="left"]') as HTMLParagraphElement;
-        this.rightPage = this.domElement.querySelector('[page="right"]') as HTMLParagraphElement;
+        this.leftPage = this.domElement.querySelector('[page="left"]') as HTMLDivElement;
+        this.rightPage = this.domElement.querySelector('[page="right"]') as HTMLDivElement;
+
+        this.leftPage.addEventListener('click', ev=>this.page -= 2);
+        this.rightPage.addEventListener('click', ev=>this.page += 2);
     }
 
     add(x: number, y: number, shift: number, value: number){
@@ -90,13 +93,12 @@ export class BookSource{
     set page(p: number){
         this._page = Math.max(1, Math.min(639, p));
         if(this._page % 2 == 0) this._page--;
-        this.setPage(this.leftPage, this._page);
-        this.setPage(this.rightPage, this._page +1);
+        this.setPage(this.leftPage, this._page -1);
+        this.setPage(this.rightPage, this._page);
     }
 
-    letterSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,&!?'-/[]\" ";
     private setPage(dom: HTMLElement, page: number){
-        dom.childNodes.forEach(el=>el.remove());
+        while(dom.firstChild) dom.firstChild.remove();
         let str = '';
         const r = Math.floor(page / 4);
         const p = (page % 4) * 40;
@@ -108,12 +110,12 @@ export class BookSource{
             str += tmp.stringMapping64(this.letterSet);
         }
         for(let i = 0; i < str.length; i++){
-            const letter = document.createElement('span');
+            const letter = document.createElement('p');
             letter.textContent = str[i];
             dom.appendChild(letter);
         }
         const pageNo = document.createElement('span');
-        pageNo.textContent = page.toString();
+        pageNo.textContent = (page + 1).toString();
         dom.appendChild(pageNo);
     }
     

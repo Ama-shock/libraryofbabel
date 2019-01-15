@@ -1,6 +1,8 @@
 export class BigNumberEncoder extends Uint8Array{
+	private readonly topMask: number;
 	constructor(readonly digit: number, readonly exp: number){
 		super(Math.ceil(digit / 8));
+		this.topMask = (1 << (this.digit % 8 || 8)) -1;
 	}
 	
 	clone(){
@@ -11,6 +13,7 @@ export class BigNumberEncoder extends Uint8Array{
 	
 	setRandom(){
 		crypto.getRandomValues(this);
+		this[this.length - 1] = this[this.length - 1] & this.topMask;
 	}
 
 	add(value: number, shift: number = 0): boolean{
@@ -28,9 +31,8 @@ export class BigNumberEncoder extends Uint8Array{
 		}
 		
 		if(shift + 1 == this.length){
-			const fill = (1 << (this.digit % 8 || 8)) -1;
-			this[shift] = added & fill;
-			return overflowed || added > fill;
+			this[shift] = added & this.topMask;
+			return overflowed || added > this.topMask;
 		}
 
 		this[shift] = added;
@@ -53,7 +55,7 @@ export class BigNumberEncoder extends Uint8Array{
 				return overflowed || this.sub(1, shift + 1);
 			}
 
-			this[shift] = subbed + (1 << (this.digit % 8 || 8));
+			this[shift] = subbed + this.topMask + 1;
 			return true;
 		}
 		
@@ -92,7 +94,6 @@ export class BigNumberEncoder extends Uint8Array{
 	}
 	
 	shiftModulo(num: number){
-		const fill = (1 << (this.digit % 8 || 8)) -1;
 		for(;num--;){
 			let topBit = 0;
 			let newByte = 0;
@@ -102,8 +103,8 @@ export class BigNumberEncoder extends Uint8Array{
 				this[i] = newByte;
 			}
 			
-			if(topBit || newByte > fill){
-				this[this.length -1] = newByte & fill;
+			if(topBit || newByte > this.topMask){
+				this[this.length -1] = newByte & this.topMask;
 				this.addModulo([2]);
 			}
 		}
