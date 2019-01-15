@@ -1,6 +1,6 @@
 # バベルの図書館　Three.js版
 ## 公開先
-
+https://game.nicovideo.jp/atsumaru/games/gm9681
 ## 利用素材
 - BGM
   - shimtone様 [http://commons.nicovideo.jp/user/726970]

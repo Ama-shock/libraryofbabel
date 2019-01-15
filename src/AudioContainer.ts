@@ -3,12 +3,13 @@ type UrlList = {[key: string]: string|URL};
 type BufferList<L> = {[K in keyof L]: Promise<AudioBuffer>};
 type PlayList<L> = {[K in keyof L]?: Promise<AudioBufferSourceNode>};
 
-export default class AudioContainer<L extends UrlList> extends AudioContext{
+export default class AudioContainer<L extends UrlList> {
     private readonly bufferList: BufferList<L>;
     private readonly playList: PlayList<L>;
+    private readonly context: AudioContext;
 
     constructor(readonly urlList: L){
-        super();
+        this.context = new AudioContext();
         let buffers = {} as BufferList<L>;
         for(let key in urlList){
             buffers[key] = this.loadAudioBuffer(urlList[key]);
@@ -21,13 +22,13 @@ export default class AudioContainer<L extends UrlList> extends AudioContext{
         let path = url instanceof URL ? url.href : url;
         let response = await fetch(path);
         let arrBuf = await response.arrayBuffer();
-        return this.decodeAudioData(arrBuf);
+        return this.context.decodeAudioData(arrBuf);
     }
 
     private source(buff: AudioBuffer): AudioBufferSourceNode{
-        let src = this.createBufferSource();
+        let src = this.context.createBufferSource();
         src.buffer = buff;
-        src.connect(this.destination);
+        src.connect(this.context.destination);
         return src;
     }
 
