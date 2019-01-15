@@ -65,9 +65,14 @@ button:empty{
 
 [page] p{
     width: 2.5%;
-    font-size: 1vw;
+    font-size: 10px;
     text-align: center;
 }
+@media screen and (max-width: 1000px) {
+    [page] p{
+        font-size: 1vw;
+    }
+ }
 
 [page='left']{
     left: 13%;

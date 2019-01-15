@@ -1,11 +1,13 @@
 
 import {BigNumberEncoder} from './BigNumberEncoder';
+import AudioContainer from './AudioContainer';
 
 export class BookSource{
     private raw: BigNumberEncoder[][];
     readonly domElement: HTMLDivElement;
     readonly leftPage: HTMLDivElement;
     readonly rightPage: HTMLDivElement;
+    private audio = new AudioContainer({se: 'sounds/card.mp3'});
 
     constructor(readonly letterSet: string){
         if(letterSet.length != 64) throw new Error('Invalid number of letter set.');
@@ -59,7 +61,7 @@ export class BookSource{
             head[1][r] = this.raw[r][0][1];
         }
         head[0][0] = bookNo;
-        head[1][0] &= shelfNo;
+        head[1][0] |= shelfNo;
         head[0].rsaEncode();
         head[1].rsaEncode();
         
@@ -95,6 +97,7 @@ export class BookSource{
         if(this._page % 2 == 0) this._page--;
         this.setPage(this.leftPage, this._page -1);
         this.setPage(this.rightPage, this._page);
+        this.audio.once('se');
     }
 
     private setPage(dom: HTMLElement, page: number){

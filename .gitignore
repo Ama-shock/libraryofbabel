@@ -2,8 +2,10 @@
 dist/
 web/main.js
 
-# draft
-web/models
+# resources
+web/img
+web/textures
+web/sounds
 
 # development file
 .vscode

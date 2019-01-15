@@ -3,7 +3,7 @@ import {WebGLRenderer} from 'three';
 import MainScene from './MainScene';
 import { Player } from './Player';
 import { BookSource } from './BookSource';
-
+import AudioContainer from './AudioContainer';
 
 const alphabetLetters = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,&!?'-/[]\"";
 const kanaLetters = " ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｬｭｮﾞﾟｰ､｡｢｣!?";
@@ -28,6 +28,7 @@ async function start(letterSet: string){
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(960, 720, false);
 
+    new AudioContainer({bgm: 'sounds/monotone.mp3'}).play('bgm');
     const book = new BookSource(letterSet);
     const player = new Player(renderer);
     const scene = new MainScene(player, book);
