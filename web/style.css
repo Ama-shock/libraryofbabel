@@ -119,3 +119,62 @@ button#jump{
     background-color: green;
     left: calc(75% - 30px);
 }
+
+#dialog{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+#dialog:not([show]){
+    display: none;
+}
+
+
+#dialog > div{
+    position: relative;
+    width: 50%;
+    height: calc(8rem + 80px);
+    top: 25%;
+    left: 25%;
+    background-color: white;
+    border-radius: 5px;
+}
+
+#dialog p{
+    position: absolute;
+    font-size: 1.5em;
+    width: 80%;
+    height: 2rem;
+    left: 10%;
+    top: 2rem;
+}
+
+#dialog input{
+    position: absolute;
+    width: 90%;
+    height: 2rem;
+    left: 5%;
+    top: 6rem;
+    border: none;
+    border-bottom: solid 1px gray;
+}
+
+#dialog input:focus{
+    outline: none;
+    border-bottom: solid 2px red;
+}
+
+button#ok{
+    bottom: 10px;
+    right: 80px;
+    background-color: blue;
+}
+button#cancel{
+    bottom: 10px;
+    right: 10px;
+    background-color: gray;
+}

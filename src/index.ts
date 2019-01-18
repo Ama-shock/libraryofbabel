@@ -4,6 +4,7 @@ import MainScene from './MainScene';
 import { Player } from './Player';
 import { BookSource } from './BookSource';
 import AudioContainer from './AudioContainer';
+import Dialog from './Dialog';
 
 const alphabetLetters = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,&!?'-/[]\"";
 const kanaLetters = " ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｬｭｮﾞﾟｰ､｡｢｣!?";
@@ -40,8 +41,9 @@ async function start(letterSet: string){
 }
 
 window.addEventListener('load', ()=>{
+    const dialog = Dialog.instance;
     const startButtons = document.querySelectorAll('button[start]');
-    startButtons.forEach(el=>el.addEventListener('click', ev=>{
+    startButtons.forEach(el=>el.addEventListener('click', async ev=>{
         const type = (ev.target as HTMLElement).getAttribute('start');
         switch(type){
             case 'alpha':
@@ -51,9 +53,11 @@ window.addEventListener('load', ()=>{
                 start(kanaLetters);
                 break;
             case 'any':
-                let letters = '';
+                dialog.type = 'text';
+                let letters: string|null = '';
                 while(letters.length != 64){
-                    letters = prompt(`任意の64文字を入力 (現在:${letters.length})`, letters)!;
+                    dialog.message = `任意の64文字を入力 (現在:${letters.length})`;
+                    letters = await dialog.open();
                     if(!letters) return;
                 }
                 start(letters);

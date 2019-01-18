@@ -2,6 +2,7 @@ import {Scene, Fog, HemisphereLight, Vector3, Raycaster} from 'three';
 import {Hall, Library, Unit, Room, BookSelector} from './3DObjects';
 import { Player } from './Player';
 import { BookSource } from './BookSource';
+import Dialog from './Dialog';
 
 const r3 = Math.tan(Math.PI / 3.0);
 export default class MainScene extends Scene{
@@ -43,9 +44,13 @@ export default class MainScene extends Scene{
         this.openButton = document.querySelector('#open') as HTMLButtonElement;
         this.jumpButton = document.querySelector('#jump') as HTMLButtonElement;
         this.openButton.onclick = ()=>this.bookOpen();
-        this.jumpButton.onclick = ()=>{
+        this.jumpButton.onclick = async()=>{
             const current = this.bookSource.page.toString();
-            const page = parseInt(prompt(`ページ ${current}/640`, current)!);
+            const dialog = Dialog.instance;
+            dialog.message = `ページ ${current}/640`;
+            dialog.value = current;
+            dialog.type = 'number';
+            const page = parseInt((await dialog.open()) || '');
             if(page) this.bookSource.page = page;
         };
 
